@@ -38,14 +38,16 @@ class DexJavaDecompiler {
                     return JavaDecompileReport(outputDirectory, 0, 0, warnings, null)
                 }
                 onProgress(0.05f)
-                jadx.save(SAVE_TICK_MS) { done, total ->
-                    val ratio = if (total <= 0L) {
-                        0f
-                    } else {
-                        done.toFloat() / total.toFloat()
+                jadx.save(SAVE_TICK_MS, object : JadxDecompiler.ProgressListener {
+                    override fun progress(done: Long, total: Long) {
+                        val ratio = if (total <= 0L) {
+                            0f
+                        } else {
+                            done.toFloat() / total.toFloat()
+                        }
+                        onProgress(ratio.coerceIn(0f, 1f))
                     }
-                    onProgress(ratio.coerceIn(0f, 1f))
-                }
+                })
                 savedCount = countJavaFiles(File(outputDirectory, "sources"))
             }
         } catch (oom: OutOfMemoryError) {

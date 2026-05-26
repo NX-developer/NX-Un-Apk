@@ -108,7 +108,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-service:2.8.7")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     implementation("io.github.skylot:jadx-core:1.5.5")
     implementation("io.github.skylot:jadx-dex-input:1.5.5")
