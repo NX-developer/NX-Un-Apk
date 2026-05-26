@@ -34,6 +34,9 @@ class SettingsActivity : AppCompatActivity() {
         bind(binding.switchZip, preferences.packAsZip) { value ->
             preferences.packAsZip = value
         }
+        bind(binding.switchNative, preferences.analyzeNativeLibraries) { value ->
+            preferences.analyzeNativeLibraries = value
+        }
         bind(binding.switchKeepIntermediate, preferences.keepIntermediateFiles) { value ->
             preferences.keepIntermediateFiles = value
         }

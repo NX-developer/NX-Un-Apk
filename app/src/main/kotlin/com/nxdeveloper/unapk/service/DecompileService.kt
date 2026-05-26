@@ -90,6 +90,7 @@ class DecompileService : Service() {
                     produceJavaSources = preferences.produceJavaSources,
                     produceSmaliSources = preferences.produceSmaliSources,
                     decodeResources = preferences.decodeResources,
+                    analyzeNativeLibraries = preferences.analyzeNativeLibraries,
                     packAsZip = preferences.packAsZip,
                     keepIntermediateFiles = preferences.keepIntermediateFiles
                 )

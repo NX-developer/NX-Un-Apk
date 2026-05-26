@@ -204,6 +204,7 @@ class MainActivity : AppCompatActivity() {
             Stage.DECODING_MANIFEST -> R.string.stage_decoding_manifest
             Stage.DECOMPILING_JAVA -> R.string.stage_decompiling_java
             Stage.DISASSEMBLING_SMALI -> R.string.stage_disassembling_smali
+            Stage.ANALYZING_NATIVE -> R.string.stage_analyzing_native
             Stage.PACKAGING -> R.string.stage_packaging
             Stage.DONE -> R.string.stage_done
             Stage.FAILED -> R.string.stage_failed

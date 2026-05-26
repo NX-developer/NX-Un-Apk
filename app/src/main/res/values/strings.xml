@@ -27,6 +27,7 @@
     <string name="stage_decoding_manifest">Decoding manifest… %1$d%%</string>
     <string name="stage_decompiling_java">Decompiling Java… %1$d%%</string>
     <string name="stage_disassembling_smali">Disassembling smali… %1$d%%</string>
+    <string name="stage_analyzing_native">Analyzing native libraries… %1$d%%</string>
     <string name="stage_packaging">Packaging archive… %1$d%%</string>
     <string name="stage_done">Completed (%1$d%%)</string>
     <string name="stage_failed">Failed (%1$d%%)</string>
@@ -39,6 +40,8 @@
     <string name="setting_produce_smali">Disassemble to smali</string>
     <string name="setting_decode_resources">Decode binary resources</string>
     <string name="setting_pack_zip">Pack output as a ZIP archive</string>
+    <string name="setting_analyze_native">Analyze .so native libraries</string>
+    <string name="setting_analyze_native_description">Parse ELF headers, list NEEDED libraries, exported and imported symbols, and extract strings from each native library in the APK.</string>
     <string name="setting_keep_intermediate">Keep intermediate workspace files</string>
 
     <string name="notification_channel_name">NX Un-Apk decoder</string>

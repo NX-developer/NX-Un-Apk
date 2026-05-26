@@ -31,6 +31,10 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_PACK_ZIP, true)
         set(value) = prefs.edit { putBoolean(KEY_PACK_ZIP, value) }
 
+    var analyzeNativeLibraries: Boolean
+        get() = prefs.getBoolean(KEY_NATIVE_ANALYSIS, true)
+        set(value) = prefs.edit { putBoolean(KEY_NATIVE_ANALYSIS, value) }
+
     companion object {
         private const val PREFS_NAME = "nx_un_apk_prefs"
         private const val KEY_BACKGROUND = "background_execution"
@@ -39,5 +43,6 @@ class AppPreferences(context: Context) {
         private const val KEY_PRODUCE_SMALI = "produce_smali"
         private const val KEY_DECODE_RESOURCES = "decode_resources"
         private const val KEY_PACK_ZIP = "pack_zip"
+        private const val KEY_NATIVE_ANALYSIS = "native_analysis"
     }
 }

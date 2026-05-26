@@ -9,6 +9,7 @@ data class DecompileOptions(
     val produceJavaSources: Boolean,
     val produceSmaliSources: Boolean,
     val decodeResources: Boolean,
+    val analyzeNativeLibraries: Boolean,
     val packAsZip: Boolean,
     val keepIntermediateFiles: Boolean
 )

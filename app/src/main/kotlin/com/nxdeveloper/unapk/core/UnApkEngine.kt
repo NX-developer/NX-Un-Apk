@@ -3,6 +3,7 @@ package com.nxdeveloper.unapk.core
 import com.nxdeveloper.unapk.decoder.ApkExtractor
 import com.nxdeveloper.unapk.decoder.DexJavaDecompiler
 import com.nxdeveloper.unapk.decoder.DexSmaliDecompiler
+import com.nxdeveloper.unapk.decoder.NativeAnalyzer
 import com.nxdeveloper.unapk.decoder.ResourceDecoder
 import com.nxdeveloper.unapk.util.FileUtils
 import com.nxdeveloper.unapk.util.ZipUtils
@@ -63,17 +64,32 @@ class UnApkEngine(private val dispatcher: CoroutineDispatcher = Dispatchers.Defa
             }
 
             if (options.produceSmaliSources || !javaSucceeded) {
-                emit(onProgress, Stage.DISASSEMBLING_SMALI, 70, "Disassembling smali")
+                emit(onProgress, Stage.DISASSEMBLING_SMALI, 65, "Disassembling smali")
                 val smaliDecompiler = DexSmaliDecompiler()
                 val smaliOut = File(output, "smali")
                 val smaliReport = smaliDecompiler.disassemble(options.sourceApk, smaliOut) { ratio ->
-                    val percent = 70 + (20 * ratio).toInt()
+                    val percent = 65 + (15 * ratio).toInt()
                     emit(onProgress, Stage.DISASSEMBLING_SMALI, percent, "Disassembling smali")
                 }
                 warnings += smaliReport.warnings
                 if (smaliReport.fatalError != null && !javaSucceeded) {
                     warnings.add("smali fallback also failed, raw DEX files have been preserved")
                     copyRawDex(extractionReport, output)
+                }
+            }
+
+            if (options.analyzeNativeLibraries) {
+                emit(onProgress, Stage.ANALYZING_NATIVE, 82, "Analyzing native libraries")
+                val nativeOut = File(output, "native_analysis")
+                val nativeRoot = File(extractionReport.workspace, "lib")
+                val nativeAnalyzer = NativeAnalyzer()
+                val nativeReport = nativeAnalyzer.analyze(nativeRoot, nativeOut) { ratio ->
+                    val percent = 82 + (8 * ratio).toInt()
+                    emit(onProgress, Stage.ANALYZING_NATIVE, percent, "Analyzing native libraries")
+                }
+                warnings += nativeReport.warnings
+                if (nativeReport.discoveredFiles == 0) {
+                    nativeOut.deleteRecursively()
                 }
             }
 
