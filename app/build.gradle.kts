@@ -112,7 +112,6 @@ dependencies {
 
     implementation("io.github.skylot:jadx-core:1.5.5")
     implementation("io.github.skylot:jadx-dex-input:1.5.5")
-    implementation("io.github.skylot:jadx-kotlin-metadata:1.5.5")
 
     implementation("io.github.reandroid:ARSCLib:1.3.8")
 

@@ -18,7 +18,6 @@ class DexSmaliDecompiler {
             isSkipResources = true
             isSkipSources = true
             isShowInconsistentCode = true
-            isRespectBytecodeAccessModifiers = true
             isExportAsGradleProject = false
             isDeobfuscationOn = false
             threadsCount = THREAD_COUNT

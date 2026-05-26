@@ -17,11 +17,9 @@ class DexJavaDecompiler {
             isSkipResources = true
             isSkipSources = false
             isShowInconsistentCode = true
-            isRespectBytecodeAccessModifiers = true
             isExportAsGradleProject = false
             isDeobfuscationOn = false
             isReplaceConsts = true
-            isFsCaseSensitive = true
             isUseImports = true
             threadsCount = THREAD_COUNT
         }
