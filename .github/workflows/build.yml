@@ -8,7 +8,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   build:
@@ -70,15 +72,55 @@ jobs:
 
       - name: Publish debug build log to summary on failure
         if: steps.build_debug.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "## Debug build failed" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           tail -n 250 /tmp/build_debug.log >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "### Full error blocks" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep -B 2 -A 10 -E "(^e: |error:|FAILURE|Caused by|> Task .* FAILED)" /tmp/build_debug.log | head -n 400 >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY'
+          import json, os, subprocess, urllib.request
+          with open('/tmp/build_debug.log', 'r', errors='replace') as fh:
+              data = fh.read()
+          import re
+          blocks = []
+          patterns = [
+              r"^e: .*?(?=\n[a-zA-Z]|\Z)",
+              r"FAILURE: .*?(?=\n\n|\Z)",
+              r"\* What went wrong:.*?(?=\* Try:|\Z)",
+              r"Caused by: .*?(?=\n[^ \t]|\Z)",
+              r"> Task .* FAILED",
+          ]
+          for pat in patterns:
+              for match in re.finditer(pat, data, re.DOTALL):
+                  blocks.append(match.group(0))
+          summary = "\n\n----\n\n".join(blocks)[:55000]
+          if not summary:
+              summary = data[-15000:]
+          token = os.environ['GH_TOKEN']
+          sha = os.environ.get('GITHUB_SHA', '')
+          repo = os.environ.get('GITHUB_REPOSITORY', '')
+          run_id = os.environ.get('GITHUB_RUN_ID', '')
+          body = f"Build failed in run {run_id}\n\n```\n{summary}\n```\n"
+          payload = json.dumps({"body": body[:60000]}).encode()
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/commits/{sha}/comments",
+              data=payload,
+              method='POST',
+              headers={
+                  'Authorization': f'Bearer {token}',
+                  'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  print('Posted commit comment status:', resp.status)
+          except Exception as exc:
+              print('Failed to post commit comment:', exc)
+          PY
           exit 1
 
       - name: Build release APK
