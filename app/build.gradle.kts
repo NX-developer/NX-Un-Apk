@@ -124,4 +124,13 @@ configurations.all {
     exclude(group = "org.slf4j", module = "slf4j-simple")
     exclude(group = "org.slf4j", module = "slf4j-log4j12")
     exclude(group = "com.google.code.findbugs", module = "jsr305")
+    resolutionStrategy {
+        force(
+            "org.jetbrains.kotlin:kotlin-stdlib:1.9.25",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.25",
+            "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25",
+            "org.jetbrains.kotlin:kotlin-stdlib-common:1.9.25",
+            "org.jetbrains.kotlin:kotlin-reflect:1.9.25"
+        )
+    }
 }
