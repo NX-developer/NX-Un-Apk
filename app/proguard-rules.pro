@@ -1,0 +1,21 @@
+-keep class jadx.** { *; }
+-keep class com.reandroid.** { *; }
+-keep class org.jf.** { *; }
+-dontwarn jadx.**
+-dontwarn com.reandroid.**
+-dontwarn org.jf.**
+-dontwarn java.awt.**
+-dontwarn javax.swing.**
+-dontwarn javax.xml.**
+-dontwarn org.slf4j.**
+-dontwarn com.google.protobuf.**
+
+-keep class * implements jadx.api.plugins.JadxPlugin
+-keep class * implements jadx.api.plugins.input.JadxInputPlugin
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
+-keepattributes Exceptions
+
+-keep class com.nxdeveloper.unapk.** { *; }

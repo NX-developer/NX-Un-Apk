@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NX Un-Apk</string>
+    <string name="settings_title">Settings</string>
+
+    <string name="title_pick_apk">Source APK</string>
+    <string name="description_pick_apk">Pick an APK from device storage and NX Un-Apk will reverse it into a readable project tree.</string>
+    <string name="action_select_apk">Select APK</string>
+    <string name="no_apk_selected">No APK selected yet.</string>
+    <string name="selected_apk">Selected: %1$s</string>
+
+    <string name="title_progress">Progress</string>
+    <string name="status_idle">Waiting for input.</string>
+    <string name="status_starting">Starting…</string>
+    <string name="status_done">Decoding finished successfully.</string>
+    <string name="status_failed">Failed: %1$s</string>
+    <string name="warning_background_disabled">Background execution is disabled. Keep the app in the foreground until the job is finished.</string>
+
+    <string name="action_share_result">Share result archive</string>
+    <string name="share_result">Share decoded APK</string>
+
+    <string name="title_warnings">Notes</string>
+
+    <string name="stage_preparing">Preparing… %1$d%%</string>
+    <string name="stage_extracting">Reading archive… %1$d%%</string>
+    <string name="stage_decoding_resources">Decoding resources… %1$d%%</string>
+    <string name="stage_decoding_manifest">Decoding manifest… %1$d%%</string>
+    <string name="stage_decompiling_java">Decompiling Java… %1$d%%</string>
+    <string name="stage_disassembling_smali">Disassembling smali… %1$d%%</string>
+    <string name="stage_packaging">Packaging archive… %1$d%%</string>
+    <string name="stage_done">Completed (%1$d%%)</string>
+    <string name="stage_failed">Failed (%1$d%%)</string>
+
+    <string name="settings_section_execution">Execution</string>
+    <string name="settings_section_output">Output</string>
+    <string name="setting_background_execution">Allow background execution</string>
+    <string name="setting_background_execution_description">When enabled, jobs keep running through a foreground service even if the app is no longer on screen.</string>
+    <string name="setting_produce_java">Decompile to Java sources</string>
+    <string name="setting_produce_smali">Disassemble to smali</string>
+    <string name="setting_decode_resources">Decode binary resources</string>
+    <string name="setting_pack_zip">Pack output as a ZIP archive</string>
+    <string name="setting_keep_intermediate">Keep intermediate workspace files</string>
+
+    <string name="notification_channel_name">NX Un-Apk decoder</string>
+    <string name="notification_channel_description">Shows progress while NX Un-Apk reverses an APK.</string>
+    <string name="notification_progress_title">Reversing %1$s</string>
+    <string name="notification_done_title">%1$s is ready</string>
+    <string name="notification_done_text">Archive size: %1$s</string>
+    <string name="notification_done_text_no_zip">Output is available in the app folder.</string>
+    <string name="notification_failed_title">NX Un-Apk failed</string>
+</resources>

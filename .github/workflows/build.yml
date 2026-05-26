@@ -1,0 +1,110 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Assemble debug and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-35
+            build-tools;35.0.0
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Generate debug keystore for release signing
+        run: |
+          mkdir -p app
+          keytool -genkey -v \
+            -keystore app/debug.keystore.placeholder \
+            -storepass android -keypass android \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=NX-developer, OU=NXPanel, O=NX, L=Istanbul, ST=Istanbul, C=TR"
+
+      - name: Make gradlew executable
+        run: |
+          if [ ! -f gradlew ]; then
+            curl -sSL "https://services.gradle.org/distributions/gradle-8.10.2-bin.zip" -o gradle.zip
+            unzip -q gradle.zip -d /tmp
+            /tmp/gradle-8.10.2/bin/gradle wrapper --gradle-version 8.10.2 --no-daemon
+          fi
+          chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+        continue-on-error: true
+
+      - name: Collect build errors when failing
+        if: failure()
+        run: |
+          echo "Searching for compilation errors..."
+          find app/build -name "*.txt" -path "*compile*" -exec echo "=== {} ===" \; -exec cat {} \; || true
+          find . -name "*.log" -path "*build*" | head -10 | xargs -I {} sh -c 'echo "=== {} ==="; cat "{}"' || true
+
+      - name: Show APK sizes
+        if: always()
+        run: |
+          echo "=== Debug APK ==="
+          ls -lh app/build/outputs/apk/debug/*.apk 2>/dev/null || echo "no debug apk"
+          echo ""
+          echo "=== Release APK ==="
+          ls -lh app/build/outputs/apk/release/*.apk 2>/dev/null || echo "no release apk"
+
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NX-Un-Apk-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Upload release APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NX-Un-Apk-release
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+
+      - name: Upload mapping file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-release
+          path: app/build/outputs/mapping/release/
+          if-no-files-found: ignore
