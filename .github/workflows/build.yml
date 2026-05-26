@@ -62,18 +62,39 @@ jobs:
           chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
-
-      - name: Build release APK
-        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+        id: build_debug
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee /tmp/build_debug.log
         continue-on-error: true
 
-      - name: Collect build errors when failing
-        if: failure()
+      - name: Publish debug build log to summary on failure
+        if: steps.build_debug.outcome == 'failure'
         run: |
-          echo "Searching for compilation errors..."
-          find app/build -name "*.txt" -path "*compile*" -exec echo "=== {} ===" \; -exec cat {} \; || true
-          find . -name "*.log" -path "*build*" | head -10 | xargs -I {} sh -c 'echo "=== {} ==="; cat "{}"' || true
+          echo "## Debug build failed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 250 /tmp/build_debug.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "### Full error blocks" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -B 2 -A 10 -E "(^e: |error:|FAILURE|Caused by|> Task .* FAILED)" /tmp/build_debug.log | head -n 400 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Build release APK
+        id: build_release
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/build_release.log
+        continue-on-error: true
+
+      - name: Publish release build log to summary on failure
+        if: steps.build_release.outcome == 'failure'
+        run: |
+          echo "## Release build failed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 200 /tmp/build_release.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Show APK sizes
         if: always()
