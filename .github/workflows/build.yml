@@ -86,15 +86,17 @@ jobs:
           import re
           blocks = []
           patterns = [
-              r"^e: .*?(?=\n[a-zA-Z]|\Z)",
+              r"^e: file:.*",
+              r"^w: file:.*",
+              r"error: .*",
               r"FAILURE: .*?(?=\n\n|\Z)",
               r"\* What went wrong:.*?(?=\* Try:|\Z)",
               r"Caused by: .*?(?=\n[^ \t]|\Z)",
               r"> Task .* FAILED",
           ]
           for pat in patterns:
-              for match in re.finditer(pat, data, re.DOTALL):
-                  blocks.append(match.group(0))
+              for match in re.finditer(pat, data, re.DOTALL | re.MULTILINE):
+                  blocks.append(match.group(0)[:5000])
           summary = "\n\n----\n\n".join(blocks)[:55000]
           if not summary:
               summary = data[-15000:]
