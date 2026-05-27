@@ -1,7 +1,13 @@
--keep class jadx.** { *; }
+-keep class com.android.tools.smali.** { *; }
+-keep class com.googlecode.dex2jar.** { *; }
+-keep class com.googlecode.d2j.** { *; }
+-keep class org.benf.cfr.** { *; }
 -keep class com.reandroid.** { *; }
 -keep class org.jf.** { *; }
--dontwarn jadx.**
+-dontwarn com.android.tools.smali.**
+-dontwarn com.googlecode.dex2jar.**
+-dontwarn com.googlecode.d2j.**
+-dontwarn org.benf.cfr.**
 -dontwarn com.reandroid.**
 -dontwarn org.jf.**
 -dontwarn java.awt.**
@@ -9,9 +15,8 @@
 -dontwarn javax.xml.**
 -dontwarn org.slf4j.**
 -dontwarn com.google.protobuf.**
+-dontwarn org.objectweb.asm.**
 
--keep class * implements jadx.api.plugins.JadxPlugin
--keep class * implements jadx.api.plugins.input.JadxInputPlugin
 -keepattributes Signature
 -keepattributes *Annotation*
 -keepattributes InnerClasses

@@ -1,106 +1,106 @@
 package com.nxdeveloper.unapk.decoder
 
-import jadx.api.JadxArgs
-import jadx.api.JadxDecompiler
-import jadx.api.JavaClass
+import com.android.tools.smali.baksmali.Baksmali
+import com.android.tools.smali.baksmali.BaksmaliOptions
+import com.android.tools.smali.dexlib2.DexFileFactory
+import com.android.tools.smali.dexlib2.Opcodes
+import com.android.tools.smali.dexlib2.iface.DexFile
 import java.io.File
 
 class DexSmaliDecompiler {
 
-    fun disassemble(apkFile: File, outputDirectory: File, onProgress: (Float) -> Unit): SmaliReport {
+    fun disassemble(
+        dexFiles: List<File>,
+        outputDirectory: File,
+        onProgress: (Float) -> Unit
+    ): SmaliReport {
         outputDirectory.mkdirs()
         val warnings = mutableListOf<String>()
-        val args = JadxArgs().apply {
-            inputFiles = mutableListOf(apkFile)
-            outDir = outputDirectory
-            outDirSrc = outputDirectory
-            outDirRes = File(outputDirectory, "_unused_resources")
-            isSkipResources = true
-            isSkipSources = true
-            isShowInconsistentCode = true
-            isExportAsGradleProject = false
-            isDeobfuscationOn = false
-            threadsCount = THREAD_COUNT
-        }
-
-        var produced = 0
-        var discovered = 0
-        try {
-            JadxDecompiler(args).use { jadx ->
-                jadx.load()
-                val classes = jadx.classes
-                discovered = classes.size
-                if (discovered == 0) {
-                    warnings.add("no classes were available for smali extraction")
-                    return SmaliReport(outputDirectory, produced, discovered, warnings, null)
-                }
-                for ((index, cls) in classes.withIndex()) {
-                    if (writeSmali(cls, outputDirectory)) {
-                        produced++
-                    }
-                    if (index % SMALI_TICK == 0) {
-                        onProgress(index.toFloat() / discovered.toFloat())
-                    }
-                }
-                onProgress(1f)
-            }
-        } catch (oom: OutOfMemoryError) {
+        if (dexFiles.isEmpty()) {
             return SmaliReport(
                 outputDirectory = outputDirectory,
-                producedClassCount = produced,
-                discoveredClassCount = discovered,
-                warnings = warnings + "smali pass ran out of memory: ${oom.message}",
-                fatalError = oom
-            )
-        } catch (error: Throwable) {
-            return SmaliReport(
-                outputDirectory = outputDirectory,
-                producedClassCount = produced,
-                discoveredClassCount = discovered,
-                warnings = warnings + "smali pass aborted: ${error.message}",
-                fatalError = error
+                producedClassCount = 0,
+                discoveredClassCount = 0,
+                warnings = warnings + "no DEX files were provided",
+                fatalError = null
             )
         }
 
-        File(outputDirectory, "_unused_resources").let { stub ->
-            if (stub.exists()) {
-                stub.deleteRecursively()
+        var totalDiscovered = 0
+        var totalProduced = 0
+
+        for ((index, dexFile) in dexFiles.withIndex()) {
+            val perDexDir = File(outputDirectory, dexFile.nameWithoutExtension)
+            perDexDir.mkdirs()
+            try {
+                val opcodes = Opcodes.forApi(API_LEVEL)
+                val parsedDex: DexFile = DexFileFactory.loadDexFile(dexFile, opcodes)
+                val classCount = parsedDex.classes.size
+                totalDiscovered += classCount
+
+                val options = BaksmaliOptions().apply {
+                    apiLevel = API_LEVEL
+                    deodex = false
+                    debugInfo = true
+                    parameterRegisters = true
+                    localsDirective = true
+                    sequentialLabels = true
+                    accessorComments = true
+                    allowOdex = true
+                }
+
+                val success = Baksmali.disassembleDexFile(
+                    parsedDex,
+                    perDexDir,
+                    THREAD_COUNT,
+                    options
+                )
+                if (!success) {
+                    warnings.add("baksmali reported failure on ${dexFile.name}")
+                }
+
+                totalProduced += countSmaliFiles(perDexDir)
+            } catch (oom: OutOfMemoryError) {
+                warnings.add("baksmali ran out of memory on ${dexFile.name}: ${oom.message}")
+            } catch (error: Throwable) {
+                warnings.add("baksmali failed for ${dexFile.name}: ${error.message}")
             }
+            onProgress((index + 1).toFloat() / dexFiles.size.toFloat())
         }
 
         return SmaliReport(
             outputDirectory = outputDirectory,
-            producedClassCount = produced,
-            discoveredClassCount = discovered,
+            producedClassCount = totalProduced,
+            discoveredClassCount = totalDiscovered,
             warnings = warnings,
             fatalError = null
         )
     }
 
-    private fun writeSmali(cls: JavaClass, outputDirectory: File): Boolean {
-        val smaliText = try {
-            cls.smali
-        } catch (error: Throwable) {
-            null
-        } ?: return false
-        if (smaliText.isBlank()) {
-            return false
+    private fun countSmaliFiles(directory: File): Int {
+        if (!directory.exists() || !directory.isDirectory) {
+            return 0
         }
-        val rawName = try {
-            cls.rawName
-        } catch (error: Throwable) {
-            cls.fullName
-        } ?: return false
-        val sanitized = rawName.replace('.', '/').replace('$', '_')
-        val target = File(outputDirectory, "$sanitized.smali")
-        target.parentFile?.mkdirs()
-        target.writeText(smaliText)
-        return true
+        var count = 0
+        val stack = ArrayDeque<File>()
+        stack.addLast(directory)
+        while (stack.isNotEmpty()) {
+            val current = stack.removeLast()
+            val children = current.listFiles() ?: continue
+            for (child in children) {
+                if (child.isDirectory) {
+                    stack.addLast(child)
+                } else if (child.name.endsWith(".smali")) {
+                    count++
+                }
+            }
+        }
+        return count
     }
 
-    companion object {
-        private const val THREAD_COUNT = 1
-        private const val SMALI_TICK = 16
+    private companion object {
+        const val API_LEVEL = 35
+        const val THREAD_COUNT = 1
     }
 }
 

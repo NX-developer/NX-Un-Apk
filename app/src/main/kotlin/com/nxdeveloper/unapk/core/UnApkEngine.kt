@@ -52,8 +52,13 @@ class UnApkEngine(private val dispatcher: CoroutineDispatcher = Dispatchers.Defa
                 emit(onProgress, Stage.DECOMPILING_JAVA, 35, "Decompiling Java sources")
                 val javaDecompiler = DexJavaDecompiler()
                 val javaOut = File(output, "java")
-                val javaReport = javaDecompiler.decompile(options.sourceApk, javaOut) { ratio ->
-                    val percent = 35 + (30 * ratio).toInt()
+                val javaIntermediate = File(workspace, "jars")
+                val javaReport = javaDecompiler.decompile(
+                    extractionReport.dexFiles,
+                    javaOut,
+                    javaIntermediate
+                ) { ratio ->
+                    val percent = 35 + (25 * ratio).toInt()
                     emit(onProgress, Stage.DECOMPILING_JAVA, percent, "Decompiling Java sources")
                 }
                 warnings += javaReport.warnings
@@ -67,7 +72,10 @@ class UnApkEngine(private val dispatcher: CoroutineDispatcher = Dispatchers.Defa
                 emit(onProgress, Stage.DISASSEMBLING_SMALI, 65, "Disassembling smali")
                 val smaliDecompiler = DexSmaliDecompiler()
                 val smaliOut = File(output, "smali")
-                val smaliReport = smaliDecompiler.disassemble(options.sourceApk, smaliOut) { ratio ->
+                val smaliReport = smaliDecompiler.disassemble(
+                    extractionReport.dexFiles,
+                    smaliOut
+                ) { ratio ->
                     val percent = 65 + (15 * ratio).toInt()
                     emit(onProgress, Stage.DISASSEMBLING_SMALI, percent, "Disassembling smali")
                 }

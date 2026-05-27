@@ -1,87 +1,129 @@
 package com.nxdeveloper.unapk.decoder
 
-import jadx.api.JadxArgs
-import jadx.api.JadxDecompiler
+import com.googlecode.d2j.dex.Dex2jar
+import com.googlecode.d2j.reader.MultiDexFileReader
+import org.benf.cfr.reader.api.CfrDriver
 import java.io.File
 
 class DexJavaDecompiler {
 
-    fun decompile(apkFile: File, outputDirectory: File, onProgress: (Float) -> Unit): JavaDecompileReport {
+    fun decompile(
+        dexFiles: List<File>,
+        outputDirectory: File,
+        intermediateDirectory: File,
+        onProgress: (Float) -> Unit
+    ): JavaDecompileReport {
         outputDirectory.mkdirs()
+        intermediateDirectory.mkdirs()
         val warnings = mutableListOf<String>()
-        val args = JadxArgs().apply {
-            inputFiles = mutableListOf(apkFile)
-            outDir = outputDirectory
-            outDirSrc = File(outputDirectory, "sources")
-            outDirRes = File(outputDirectory, "resources_unused")
-            isSkipResources = true
-            isSkipSources = false
-            isShowInconsistentCode = true
-            isExportAsGradleProject = false
-            isDeobfuscationOn = false
-            isReplaceConsts = true
-            isUseImports = true
-            threadsCount = THREAD_COUNT
-        }
-
-        var classCount = 0
-        var savedCount = 0
-        try {
-            JadxDecompiler(args).use { jadx ->
-                jadx.load()
-                val classes = jadx.classes
-                classCount = classes.size
-                if (classCount == 0) {
-                    warnings.add("jadx loaded the APK but no classes were discovered")
-                    return JavaDecompileReport(outputDirectory, 0, 0, warnings, null)
-                }
-                onProgress(0.05f)
-                jadx.save(SAVE_TICK_MS, object : JadxDecompiler.ProgressListener {
-                    override fun progress(done: Long, total: Long) {
-                        val ratio = if (total <= 0L) {
-                            0f
-                        } else {
-                            done.toFloat() / total.toFloat()
-                        }
-                        onProgress(ratio.coerceIn(0f, 1f))
-                    }
-                })
-                savedCount = countJavaFiles(File(outputDirectory, "sources"))
-            }
-        } catch (oom: OutOfMemoryError) {
+        if (dexFiles.isEmpty()) {
             return JavaDecompileReport(
                 outputDirectory = outputDirectory,
-                producedClassCount = savedCount,
-                discoveredClassCount = classCount,
-                warnings = warnings + "jadx ran out of memory: ${oom.message}",
-                fatalError = oom
-            )
-        } catch (error: Throwable) {
-            return JavaDecompileReport(
-                outputDirectory = outputDirectory,
-                producedClassCount = savedCount,
-                discoveredClassCount = classCount,
-                warnings = warnings + "jadx aborted: ${error.message}",
-                fatalError = error
+                producedClassCount = 0,
+                discoveredClassCount = 0,
+                warnings = warnings + "no DEX files were provided",
+                fatalError = null
             )
         }
 
-        File(outputDirectory, "resources_unused").let { stub ->
-            if (stub.exists()) {
-                stub.deleteRecursively()
+        val convertedJars = mutableListOf<File>()
+        var totalClasses = 0
+        for ((index, dexFile) in dexFiles.withIndex()) {
+            val jarTarget = File(intermediateDirectory, "${dexFile.nameWithoutExtension}.jar")
+            try {
+                Dex2jar.from(dexFile)
+                    .skipDebug(false)
+                    .topoLogicalSort()
+                    .noCode(false)
+                    .to(jarTarget.toPath())
+                convertedJars.add(jarTarget)
+                totalClasses += countClassesInJar(jarTarget)
+            } catch (oom: OutOfMemoryError) {
+                warnings.add("dex2jar ran out of memory on ${dexFile.name}: ${oom.message}")
+            } catch (error: Throwable) {
+                warnings.add("dex2jar failed for ${dexFile.name}: ${error.message}")
             }
+            onProgress(0.45f * (index + 1).toFloat() / dexFiles.size.toFloat())
+        }
+
+        if (convertedJars.isEmpty()) {
+            return JavaDecompileReport(
+                outputDirectory = outputDirectory,
+                producedClassCount = 0,
+                discoveredClassCount = totalClasses,
+                warnings = warnings + "no JAR archives were produced from DEX files",
+                fatalError = null
+            )
+        }
+
+        var totalDecompiled = 0
+        for ((index, jarFile) in convertedJars.withIndex()) {
+            val perJarOutput = File(outputDirectory, jarFile.nameWithoutExtension)
+            perJarOutput.mkdirs()
+            try {
+                val options = HashMap<String, String>()
+                options["outputdir"] = perJarOutput.absolutePath
+                options["silent"] = "true"
+                options["recover"] = "true"
+                options["recovertypeclash"] = "true"
+                options["recovertypehints"] = "true"
+                options["showversion"] = "false"
+                options["hideutf"] = "false"
+                options["caseinsensitivefs"] = "false"
+                options["comments"] = "false"
+                options["decodelambdas"] = "true"
+                options["decodestringswitch"] = "true"
+                options["sugarstringbuilder"] = "true"
+                options["sugarboxing"] = "true"
+                options["arrayiter"] = "true"
+                options["collectioniter"] = "true"
+                options["innerclasses"] = "true"
+
+                val driver = CfrDriver.Builder()
+                    .withOptions(options)
+                    .build()
+                driver.analyse(listOf(jarFile.absolutePath))
+
+                totalDecompiled += countFilesByExtension(perJarOutput, ".java")
+            } catch (oom: OutOfMemoryError) {
+                warnings.add("CFR ran out of memory on ${jarFile.name}: ${oom.message}")
+            } catch (error: Throwable) {
+                warnings.add("CFR failed for ${jarFile.name}: ${error.message}")
+            }
+            val progress = 0.45f + 0.55f * (index + 1).toFloat() / convertedJars.size.toFloat()
+            onProgress(progress.coerceIn(0f, 1f))
         }
 
         return JavaDecompileReport(
             outputDirectory = outputDirectory,
-            producedClassCount = savedCount,
-            discoveredClassCount = classCount,
+            producedClassCount = totalDecompiled,
+            discoveredClassCount = totalClasses,
             warnings = warnings,
             fatalError = null
         )
     }
 
-    private fun countJavaFiles(directory: File): Int {
+    private fun countClassesInJar(jar: File): Int {
+        if (!jar.exists()) {
+            return 0
+        }
+        var count = 0
+        try {
+            java.util.zip.ZipFile(jar).use { zip ->
+                val entries = zip.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    if (!entry.isDirectory && entry.name.endsWith(".class")) {
+                        count++
+                    }
+                }
+            }
+        } catch (ignored: Throwable) {
+        }
+        return count
+    }
+
+    private fun countFilesByExtension(directory: File, extension: String): Int {
         if (!directory.exists() || !directory.isDirectory) {
             return 0
         }
@@ -94,17 +136,12 @@ class DexJavaDecompiler {
             for (child in children) {
                 if (child.isDirectory) {
                     stack.addLast(child)
-                } else if (child.name.endsWith(".java")) {
+                } else if (child.name.endsWith(extension)) {
                     count++
                 }
             }
         }
         return count
-    }
-
-    companion object {
-        private const val THREAD_COUNT = 1
-        private const val SAVE_TICK_MS = 500
     }
 }
 
