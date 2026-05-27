@@ -11,12 +11,13 @@ android {
         applicationId = "com.nxdeveloper.unapk"
         minSdk = 21
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         vectorDrawables {
             useSupportLibrary = true
         }
         resourceConfigurations += listOf("en", "tr")
+        buildConfigField("String", "ENGINE_TAG", "\"dex2jar+CFR+baksmali\"")
     }
 
     signingConfigs {

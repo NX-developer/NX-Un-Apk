@@ -25,6 +25,7 @@ import com.nxdeveloper.unapk.databinding.ActivityMainBinding
 import com.nxdeveloper.unapk.prefs.AppPreferences
 import com.nxdeveloper.unapk.service.DecompileService
 import com.nxdeveloper.unapk.util.FileUtils
+import com.nxdeveloper.unapk.BuildConfig
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -67,6 +68,11 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
+        binding.toolbar.subtitle = getString(
+            R.string.toolbar_version_subtitle,
+            BuildConfig.VERSION_NAME,
+            BuildConfig.ENGINE_TAG
+        )
         preferences = AppPreferences(this)
 
         binding.selectApkButton.setOnClickListener {

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">NX Un-Apk</string>
+    <string name="toolbar_version_subtitle">v%1$s · %2$s</string>
     <string name="settings_title">Settings</string>
 
     <string name="title_pick_apk">Source APK</string>
