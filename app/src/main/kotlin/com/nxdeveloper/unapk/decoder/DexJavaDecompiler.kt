@@ -1,9 +1,18 @@
 package com.nxdeveloper.unapk.decoder
 
-import com.googlecode.d2j.dex.Dex2jar
-import com.googlecode.d2j.reader.MultiDexFileReader
+import com.googlecode.d2j.dex.ClassVisitorFactory
+import com.googlecode.d2j.dex.Dex2Asm
+import com.googlecode.d2j.dex.DexExceptionHandler
+import com.googlecode.d2j.node.DexFileNode
+import com.googlecode.d2j.reader.DexFileReader
 import org.benf.cfr.reader.api.CfrDriver
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
 import java.io.File
+import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class DexJavaDecompiler {
 
@@ -31,13 +40,13 @@ class DexJavaDecompiler {
         for ((index, dexFile) in dexFiles.withIndex()) {
             val jarTarget = File(intermediateDirectory, "${dexFile.nameWithoutExtension}.jar")
             try {
-                Dex2jar.from(dexFile)
-                    .skipDebug(false)
-                    .topoLogicalSort()
-                    .noCode(false)
-                    .to(jarTarget.toPath())
-                convertedJars.add(jarTarget)
-                totalClasses += countClassesInJar(jarTarget)
+                val classCount = convertDexToJar(dexFile, jarTarget, warnings)
+                if (classCount > 0) {
+                    convertedJars.add(jarTarget)
+                    totalClasses += classCount
+                } else {
+                    warnings.add("dex2jar produced no classes for ${dexFile.name}")
+                }
             } catch (oom: OutOfMemoryError) {
                 warnings.add("dex2jar ran out of memory on ${dexFile.name}: ${oom.message}")
             } catch (error: Throwable) {
@@ -103,24 +112,55 @@ class DexJavaDecompiler {
         )
     }
 
-    private fun countClassesInJar(jar: File): Int {
-        if (!jar.exists()) {
-            return 0
+    private fun convertDexToJar(dexFile: File, jarTarget: File, warnings: MutableList<String>): Int {
+        if (jarTarget.exists()) {
+            jarTarget.delete()
         }
-        var count = 0
-        try {
-            java.util.zip.ZipFile(jar).use { zip ->
-                val entries = zip.entries()
-                while (entries.hasMoreElements()) {
-                    val entry = entries.nextElement()
-                    if (!entry.isDirectory && entry.name.endsWith(".class")) {
-                        count++
+        jarTarget.parentFile?.mkdirs()
+
+        val reader = DexFileReader(dexFile)
+        val fileNode = DexFileNode()
+        reader.accept(fileNode)
+
+        val writtenNames = HashSet<String>()
+        var classCount = 0
+
+        ZipOutputStream(FileOutputStream(jarTarget)).use { zipOut ->
+            val factory = object : ClassVisitorFactory {
+                override fun create(name: String): ClassVisitor {
+                    val writer = ClassWriter(ClassWriter.COMPUTE_MAXS)
+                    return object : ClassVisitor(Opcodes.ASM9, writer) {
+                        override fun visitEnd() {
+                            super.visitEnd()
+                            val data = try {
+                                writer.toByteArray()
+                            } catch (error: Throwable) {
+                                warnings.add("ASM serialization failed for $name: ${error.message}")
+                                return
+                            }
+                            if (writtenNames.contains(name)) {
+                                return
+                            }
+                            try {
+                                zipOut.putNextEntry(ZipEntry("$name.class"))
+                                zipOut.write(data)
+                                zipOut.closeEntry()
+                                writtenNames.add(name)
+                                classCount++
+                            } catch (error: Throwable) {
+                                warnings.add("could not write class $name to JAR: ${error.message}")
+                            }
+                        }
                     }
                 }
             }
-        } catch (ignored: Throwable) {
+
+            val handler = LenientExceptionHandler(warnings, dexFile.name)
+            val converter = Dex2Asm(handler)
+            converter.convertDex(fileNode, factory)
         }
-        return count
+
+        return classCount
     }
 
     private fun countFilesByExtension(directory: File, extension: String): Int {
@@ -142,6 +182,25 @@ class DexJavaDecompiler {
             }
         }
         return count
+    }
+}
+
+private class LenientExceptionHandler(
+    private val warnings: MutableList<String>,
+    private val dexName: String
+) : DexExceptionHandler {
+
+    override fun handleFileException(e: Exception) {
+        warnings.add("dex2jar file exception in $dexName: ${e.message}")
+    }
+
+    override fun handleMethodTranslateException(
+        method: com.googlecode.d2j.Method?,
+        irMethod: com.googlecode.dex2jar.ir.IrMethod?,
+        mv: org.objectweb.asm.MethodVisitor?,
+        e: Exception
+    ) {
+        warnings.add("method translate failed in $dexName for $method: ${e.message}")
     }
 }
 

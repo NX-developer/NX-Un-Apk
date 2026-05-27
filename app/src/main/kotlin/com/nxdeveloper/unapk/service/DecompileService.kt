@@ -19,6 +19,8 @@ import com.nxdeveloper.unapk.core.ProgressUpdate
 import com.nxdeveloper.unapk.core.Stage
 import com.nxdeveloper.unapk.core.UnApkEngine
 import com.nxdeveloper.unapk.prefs.AppPreferences
+import com.nxdeveloper.unapk.util.DownloadsExporter
+import com.nxdeveloper.unapk.util.ExportResult
 import com.nxdeveloper.unapk.util.FileUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -100,8 +102,9 @@ class DecompileService : Service() {
                     progressState.value = update
                     updateForegroundNotification(displayName, update)
                 }
-                resultState.value = result
-                postFinalNotification(displayName, result)
+                val finalResult = exportSuccessToDownloads(result, displayName)
+                resultState.value = finalResult
+                postFinalNotification(displayName, finalResult)
             } catch (cancellation: Throwable) {
                 resultState.value = DecompileResult.Failure(
                     stage = Stage.FAILED,
@@ -111,6 +114,38 @@ class DecompileService : Service() {
             } finally {
                 stopForegroundCompat()
                 stopSelf()
+            }
+        }
+    }
+
+    private fun exportSuccessToDownloads(result: DecompileResult, displayName: String): DecompileResult {
+        if (result !is DecompileResult.Success) {
+            return result
+        }
+        val zip = result.zipArchive ?: return result
+        val baseName = displayName.removeSuffix(".apk").ifBlank { "decoded" }
+        val targetName = "$baseName.zip"
+        val export = DownloadsExporter.export(this, zip, targetName)
+        return when (export) {
+            is ExportResult.Success -> {
+                val mergedWarnings = result.warnings + listOf("Saved to ${export.visiblePath}")
+                DecompileResult.Success(
+                    outputDirectory = result.outputDirectory,
+                    zipArchive = result.zipArchive,
+                    publicArchivePath = export.visiblePath,
+                    publicArchiveUri = export.uri,
+                    warnings = mergedWarnings
+                )
+            }
+            is ExportResult.Failure -> {
+                val mergedWarnings = result.warnings + listOf("Could not copy to Downloads: ${export.reason}")
+                DecompileResult.Success(
+                    outputDirectory = result.outputDirectory,
+                    zipArchive = result.zipArchive,
+                    publicArchivePath = null,
+                    publicArchiveUri = null,
+                    warnings = mergedWarnings
+                )
             }
         }
     }

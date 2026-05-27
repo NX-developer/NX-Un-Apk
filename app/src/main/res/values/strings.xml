@@ -14,6 +14,7 @@
     <string name="status_idle">Waiting for input.</string>
     <string name="status_starting">Starting…</string>
     <string name="status_done">Decoding finished successfully.</string>
+    <string name="status_done_with_path">Decoding finished successfully.\nSaved to: %1$s</string>
     <string name="status_failed">Failed: %1$s</string>
     <string name="warning_background_disabled">Background execution is disabled. Keep the app in the foreground until the job is finished.</string>
 

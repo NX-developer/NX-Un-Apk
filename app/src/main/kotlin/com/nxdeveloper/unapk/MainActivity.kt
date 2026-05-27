@@ -165,7 +165,12 @@ class MainActivity : AppCompatActivity() {
         }
         when (result) {
             is DecompileResult.Success -> {
-                binding.statusText.text = getString(R.string.status_done)
+                val pathLine = result.publicArchivePath
+                if (pathLine != null) {
+                    binding.statusText.text = getString(R.string.status_done_with_path, pathLine)
+                } else {
+                    binding.statusText.text = getString(R.string.status_done)
+                }
                 binding.openOutputButton.isEnabled = result.zipArchive != null
                 if (result.warnings.isNotEmpty()) {
                     binding.warningsBlock.isVisible = true
@@ -181,8 +186,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun shareLastZipOutput() {
         val result = boundService?.lastResult?.value as? DecompileResult.Success ?: return
-        val zip = result.zipArchive ?: return
-        val uri = exportableUri(zip)
+        val uri = result.publicArchiveUri ?: result.zipArchive?.let { exportableUri(it) } ?: return
         val share = Intent(Intent.ACTION_SEND).apply {
             type = "application/zip"
             putExtra(Intent.EXTRA_STREAM, uri)

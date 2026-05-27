@@ -119,6 +119,8 @@ class UnApkEngine(private val dispatcher: CoroutineDispatcher = Dispatchers.Defa
             DecompileResult.Success(
                 outputDirectory = output,
                 zipArchive = zipFile,
+                publicArchivePath = null,
+                publicArchiveUri = null,
                 warnings = warnings
             )
         } catch (error: Throwable) {

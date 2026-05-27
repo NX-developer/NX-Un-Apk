@@ -25,6 +25,8 @@ sealed class DecompileResult {
     data class Success(
         val outputDirectory: File,
         val zipArchive: File?,
+        val publicArchivePath: String?,
+        val publicArchiveUri: android.net.Uri?,
         val warnings: List<String>
     ) : DecompileResult()
 
