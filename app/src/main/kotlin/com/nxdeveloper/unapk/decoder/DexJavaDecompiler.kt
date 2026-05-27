@@ -1,13 +1,15 @@
 package com.nxdeveloper.unapk.decoder
 
 import com.googlecode.d2j.dex.ClassVisitorFactory
-import com.googlecode.d2j.dex.Dex2Asm
 import com.googlecode.d2j.dex.DexExceptionHandler
+import com.googlecode.d2j.dex.ExDex2Asm
 import com.googlecode.d2j.node.DexFileNode
+import com.googlecode.d2j.node.DexMethodNode
 import com.googlecode.d2j.reader.DexFileReader
 import org.benf.cfr.reader.api.CfrDriver
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import java.io.File
 import java.io.FileOutputStream
@@ -156,7 +158,7 @@ class DexJavaDecompiler {
             }
 
             val handler = LenientExceptionHandler(warnings, dexFile.name)
-            val converter = Dex2Asm(handler)
+            val converter = ExDex2Asm(handler)
             converter.convertDex(fileNode, factory)
         }
 
@@ -196,8 +198,8 @@ private class LenientExceptionHandler(
 
     override fun handleMethodTranslateException(
         method: com.googlecode.d2j.Method?,
-        irMethod: com.googlecode.dex2jar.ir.IrMethod?,
-        mv: org.objectweb.asm.MethodVisitor?,
+        methodNode: DexMethodNode?,
+        mv: MethodVisitor?,
         e: Exception
     ) {
         warnings.add("method translate failed in $dexName for $method: ${e.message}")
